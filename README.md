@@ -1,4 +1,3 @@
-```md
 # DataMade Code Challenge: React Map
 
 ![2026 DataMade Code Challenge](https://github.com/datamade/code-challenge-v2/blob/main/map/static/images/2026-datamade-code-challenge.jpg)

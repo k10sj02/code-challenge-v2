@@ -1,10 +1,4 @@
 import pytest
-from datetime import date
-
-from django.shortcuts import reverse
-from rest_framework.test import APIClient
-
-from map.models import CommunityArea, RestaurantPermit
 
 @pytest.mark.django_db
 def test_map_data_view():

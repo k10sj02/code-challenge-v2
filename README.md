@@ -102,4 +102,12 @@ To submit your work, create a feature branch for your code, commit your changes,
 | Hayley    | [https://github.com/haowens](https://github.com/haowens)             |
 
 Keep in mind that you cannot create a private fork of a public repository on GitHub, so you'll need to [follow these instructions](https://gist.github.com/0xjac/85097472043b697ab57ba1b1c7530274) to create a private copy of the repo.
+
+## Approach
+
+- Implemented permit aggregation in `CommunityAreaSerializer` using a `SerializerMethodField`
+- Since `RestaurantPermit` does not use a ForeignKey to `CommunityArea`, permits are matched using `community_area_id` and `area_id`
+- Added filtering by year via query parameters (`?year=YYYY`)
+- Wrote a test to validate permit counts and year-based filtering
+
 ```

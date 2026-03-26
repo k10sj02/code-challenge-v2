@@ -117,3 +117,4 @@ map/static/compressor/*
 
 # Local uploads
 media/
+.history/

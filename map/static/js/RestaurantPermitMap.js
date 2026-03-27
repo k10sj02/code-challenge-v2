@@ -1,9 +1,6 @@
-import React, { useEffect, useState } from "react"
-
+import React, { useEffect, useState, useRef } from "react"
 import { MapContainer, TileLayer, GeoJSON } from "react-leaflet"
-
 import "leaflet/dist/leaflet.css"
-
 import RAW_COMMUNITY_AREAS from "../../../data/raw/community-areas.geojson"
 
 function YearSelect({ setFilterVal }) {
@@ -28,7 +25,7 @@ function YearSelect({ setFilterVal }) {
       <select
         id="yearSelect"
         className="form-select form-select-lg mb-3"
-        onChange={(e) => setFilterVal(e.target.value)}
+        onChange={(e) => setFilterVal(Number(e.target.value))}
       >
         {options}
       </select>
@@ -41,16 +38,22 @@ export default function RestaurantPermitMap() {
 
   const [currentYearData, setCurrentYearData] = useState([])
   const [year, setYear] = useState(2026)
+  const currentYearDataRef = useRef({ data: [], maxNumPermits: 0 })
 
-  const yearlyDataEndpoint = `/map-data/?year=${year}`
+  console.log("Selected year:", year)
 
   useEffect(() => {
-    fetch(yearlyDataEndpoint)
+    fetch(`/map-data/?year=${year}`)
       .then((res) => res.json())
       .then((data) => {
+        const maxNumPermits = data.reduce(
+          (max, area) => Math.max(max, area.num_permits),
+          0
+        )
+        currentYearDataRef.current = { data, maxNumPermits }
         setCurrentYearData(data)
       })
-  }, [yearlyDataEndpoint])
+  }, [year])
 
   const totalPermits = currentYearData.reduce(
     (sum, area) => sum + area.num_permits,
@@ -72,14 +75,11 @@ export default function RestaurantPermitMap() {
   function setAreaInteraction(feature, layer) {
     const areaName = feature.properties.community.toUpperCase()
 
-    const areaData = currentYearData.find(
-      (area) => area.name === areaName
-    )
+    const { data, maxNumPermits } = currentYearDataRef.current
 
+    const areaData = data.find((area) => area.name === areaName)
     const numPermits = areaData ? areaData.num_permits : 0
-
-    const percentage =
-      maxNumPermits > 0 ? numPermits / maxNumPermits : 0
+    const percentage = maxNumPermits > 0 ? numPermits / maxNumPermits : 0
 
     layer.setStyle({
       fillColor: getColor(percentage),
@@ -89,9 +89,7 @@ export default function RestaurantPermitMap() {
     })
 
     layer.on("mouseover", () => {
-      layer.bindPopup(
-        `<strong>${areaName}</strong><br/>Permits: ${numPermits}`
-      )
+      layer.bindPopup(`<strong>${areaName}</strong><br/>Permits: ${numPermits}`)
       layer.openPopup()
     })
   }
@@ -122,7 +120,7 @@ export default function RestaurantPermitMap() {
           <GeoJSON
             data={RAW_COMMUNITY_AREAS}
             onEachFeature={setAreaInteraction}
-            key={maxNumPermits}
+            key={year}
           />
         ) : null}
       </MapContainer>

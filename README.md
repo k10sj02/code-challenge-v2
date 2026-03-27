@@ -16,11 +16,11 @@ We'll be evaluating whether the code works, as well as its quality. Before submi
 
 ## Installation
 
+Development requires a local installation of [Docker](https://docs.docker.com/get-started/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/). These are the only two system-level dependencies you should need.
+
 ### Apple Silicon (M1/M2/M3) Compatibility
 
-On Apple Silicon machines, the default PostGIS image may not support the ARM architecture.
-
-To ensure compatibility, add the following line to the `postgres` service in `docker-compose.yml`:
+On Apple Silicon machines, the default PostGIS image may not support the ARM architecture. To ensure compatibility, add the following line to the `postgres` service in `docker-compose.yml`:
 
 ```yaml
 platform: linux/amd64
@@ -28,7 +28,7 @@ platform: linux/amd64
 
 This enables Docker to run the container using emulation and allows the application to run as expected.
 
-Development requires a local installation of [Docker](https://docs.docker.com/get-started/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/). These are the only two system-level dependencies you should need.
+### Setup
 
 Once you have Docker and Docker Compose installed, build the application containers from the project's root directory:
 
@@ -50,6 +50,12 @@ docker compose up
 
 The app will log to the console, and you should be able to visit it at [http://localhost:8000](http://localhost:8000)
 
+## Running Tests
+
+```bash
+docker compose -f docker-compose.yml -f tests/docker-compose.yml run --rm app
+```
+
 ## Completing the Challenge
 
 Once you have the app up and running on your computer, you'll need to flesh out certain code blocks to make the map functional. You'll be using [Django](https://docs.djangoproject.com/en/6.0/) and [React-Leaflet](https://react-leaflet.js.org/docs/api-components/) to complete this task. By the end of this challenge, you should have:
@@ -69,15 +75,9 @@ In `map/serializers.py`, supplement each community area with data on the amount 
 
 In `tests/test_views.py` implement a test to validate the data that your endpoint produces. You will want to create some test `CommunityArea` and `RestaurantPermit` objects and then assert that the expected values are returned when querying the endpoint.
 
-Use this command to run tests:
-
-```bash
-docker compose -f docker-compose.yml -f tests/docker-compose.yml run --rm app
-```
-
 ### Step 3: Filter results by a specific year
 
-In `map/static/js/RestaurantPermitMap.js`, create a filter that allows users to send a request for a specific year to the backend. The options shoulds be any year between 2016 and 2026, inclusive. Then, use the fetch api in the map component to make a request and receive that data.
+In `map/static/js/RestaurantPermitMap.js`, create a filter that allows users to send a request for a specific year to the backend. The options should be any year between 2016 and 2026, inclusive. Then, use the fetch api in the map component to make a request and receive that data.
 
 ### Step 4: Display results on the page
 
@@ -107,23 +107,30 @@ Keep in mind that you cannot create a private fork of a public repository on Git
 
 ### Backend (Django / DRF)
 
-- Implemented permit aggregation in `CommunityAreaSerializer` using a `SerializerMethodField`
-- Since `RestaurantPermit` does not define a ForeignKey to `CommunityArea`, permits are matched using `community_area_id` (string) and `area_id` (int)
-- Added optional year-based filtering via query parameters (`/map-data/?year=YYYY`)
-- Used Django ORM filtering and aggregation (`.filter()`, `.count()`) to compute permit counts per community area
+- Implemented `get_num_permits` in `CommunityAreaSerializer` to aggregate
+  permit counts per community area using Django ORM `.filter()` and `.count()`
+- Since `RestaurantPermit` has no ForeignKey to `CommunityArea`, permits are
+  matched manually using `community_area_id` (string) against `area_id` (int)
+- Diagnosed and fixed a bug in the starter `views.py`: the serializer context
+  was passing `{"year": ...}` but the serializer was reading from `request` —
+  changed to `context={"request": request}` so year filtering actually works
+
+### Frontend (React / React-Leaflet)
+
+- Built a year filter dropdown covering 2016–2026 that triggers a fresh API
+  fetch on change
+- Diagnosed why map colors weren't updating: `onEachFeature` only runs on
+  GeoJSON mount, so changing data without remounting had no effect — fixed by
+  using `key={year}` to force remounting on year change
+- Used `useRef` alongside state so the `setAreaInteraction` callback always
+  reads current data rather than stale closure values
+- Displays total permits and max permits for the selected year
 
 ### Testing
 
-- Wrote a test for the `/map-data/` endpoint using `pytest` and `APIClient`
-- Created test `CommunityArea` and `RestaurantPermit` objects
-- Verified that:
-  - permit counts are correctly aggregated
-  - filtering by year returns expected results
-  - permits from other years are excluded
-
-### Notes
-
-- The dataset required a manual join due to the absence of a ForeignKey relationship between permits and community areas
-- Focused on clarity and correctness in backend implementation before moving to frontend integration
-
-```
+- Rewrote the starter test, which had invalid `reverse()` syntax and no
+  assertions
+- Used `APIClient` to query `/map-data/?year=2021` and assert correct permit
+  counts per community area
+- Fixed a type mismatch: `area_id` is an `IntegerField` so test data now passes
+  integers, and `community_area_id` is cast to `str()` to match the model

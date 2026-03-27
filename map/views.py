@@ -9,7 +9,6 @@ from rest_framework.response import Response
 from map.models import CommunityArea
 from map.serializers import CommunityAreaSerializer
 
-
 class Home(TemplateView):
     template_name = "map/home_page.html"
 
@@ -20,7 +19,7 @@ class MapDataView(APIView):
         serializer = CommunityAreaSerializer(
             community_areas,
             many=True,
-            context={"year": request.query_params.get("year")},
+            context={"request": request},
         )
         return Response(serializer.data)
 
